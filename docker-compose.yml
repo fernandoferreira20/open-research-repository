@@ -1,6 +1,41 @@
 version: '3.9'
 
 services:
-  # The project foundation is ready.
-  # Sprint 1 will add services for frontend, backend, PostgreSQL, and OpenSearch.
-  # No runtime service definitions are included in this initial structure.
+  # Backend service for the Flask API.
+  backend:
+    build:
+      context: ./backend
+    container_name: open-research-backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    depends_on:
+      - database
+    volumes:
+      - ./backend:/app
+    networks:
+      - research_network
+
+  # Database service for local development with PostgreSQL.
+  database:
+    image: postgres:16
+    container_name: open-research-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - research_network
+
+volumes:
+  # Named volume to persist PostgreSQL data across container restarts.
+  postgres_data:
+
+networks:
+  # Shared network so backend and database can communicate by service name.
+  research_network:
