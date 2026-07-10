@@ -5,7 +5,7 @@ from .extensions import db, migrate
 from .routes import api_bp
 
 
-def create_app():
+def create_app(config_object: type[Config] = Config):
     """Create and configure the Flask application.
 
     The Application Factory pattern allows the app to be created
@@ -13,7 +13,7 @@ def create_app():
     It also makes the app easier to extend and scale over time.
     """
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(config_object)
 
     # Initialize extension objects with the Flask app instance.
     # This binds SQLAlchemy and migration support to the app.

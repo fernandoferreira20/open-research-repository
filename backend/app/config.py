@@ -17,3 +17,12 @@ class Config:
 
     # Flask environment mode: development, production, or testing.
     FLASK_ENV = os.getenv("FLASK_ENV", "production")
+
+
+class TestConfig(Config):
+    """Configuration used only for automated tests."""
+
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    FLASK_ENV = "testing"

@@ -3,3 +3,5 @@ python-dotenv
 Flask-SQLAlchemy
 Flask-Migrate
 psycopg[binary]
+pytest
+pytest-cov
