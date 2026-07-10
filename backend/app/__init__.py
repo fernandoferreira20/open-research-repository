@@ -27,6 +27,11 @@ def create_app():
         # Importing the models package triggers registration of db.Model
         # subclasses without executing application-level code.
         from . import models  # noqa: F401
+        # Import and register the records blueprint so its routes are
+        # available when the application starts. Importing inside the
+        # application context helps avoid circular import issues.
+        from .records.routes import records_bp  # noqa: F401
+        app.register_blueprint(records_bp)
 
     # Register route blueprints here. Blueprints keep route
     # organization modular and make it easy to add new APIs later.
