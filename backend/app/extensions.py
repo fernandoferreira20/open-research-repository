@@ -1,13 +1,15 @@
 """Central place to initialize Flask extensions.
 
-This module exists so extension instances can be imported from a single
-location and initialized in `create_app()` later. Example extensions include
-ORMs, migration tools, caching, and authentication helpers.
+Extensions are created at import time so they can be declared globally and
+then initialized with a specific Flask app instance inside `create_app()`.
+This supports the Application Factory pattern and keeps the app extensible.
 """
 
-# Example placeholder for future extension support:
-# from flask_sqlalchemy import SQLAlchemy
-# db = SQLAlchemy()
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
-# Do not create extensions here yet. Initialize them inside create_app()
-# when the backend architecture is expanded.
+# Create extension objects outside of create_app() so they can be imported
+# by other modules without requiring an application instance.
+# The actual Flask app is bound later using `init_app()`.
+db = SQLAlchemy()
+migrate = Migrate()
