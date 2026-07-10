@@ -1,0 +1,6 @@
+version: '3.9'
+
+services:
+  # The project foundation is ready.
+  # Sprint 1 will add services for frontend, backend, PostgreSQL, and OpenSearch.
+  # No runtime service definitions are included in this initial structure.
