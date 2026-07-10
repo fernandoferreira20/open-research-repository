@@ -20,6 +20,14 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # Import models here so Flask-Migrate (Alembic) can auto-detect model
+    # definitions when generating migrations. Importing inside the factory
+    # avoids circular imports at module import time.
+    with app.app_context():
+        # Importing the models package triggers registration of db.Model
+        # subclasses without executing application-level code.
+        from . import models  # noqa: F401
+
     # Register route blueprints here. Blueprints keep route
     # organization modular and make it easy to add new APIs later.
     app.register_blueprint(api_bp)
