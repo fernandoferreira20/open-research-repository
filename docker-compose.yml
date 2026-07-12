@@ -30,10 +30,44 @@ services:
     networks:
       - research_network
 
+  # OpenSearch service for document indexing and search.
+  opensearch:
+    image: opensearchproject/opensearch:2.19.3
+    container_name: open-research-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - network.host=0.0.0.0
+      - http.port=9200
+      - transport.tcp.port=9300
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    networks:
+      - research_network
+
+  # OpenSearch Dashboards for visualizing and interacting with OpenSearch.
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.3
+    container_name: open-research-dashboards
+    depends_on:
+      - opensearch
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN="true"
+    ports:
+      - "5601:5601"
+    networks:
+      - research_network
+
 volumes:
   # Named volume to persist PostgreSQL data across container restarts.
   postgres_data:
+  # Named volume to persist OpenSearch data across restarts.
+  opensearch_data:
 
 networks:
-  # Shared network so backend and database can communicate by service name.
+  # Shared network so backend, database, and search services can communicate by service name.
   research_network:

@@ -12,11 +12,20 @@ Foundation / Work in Progress
 - JavaScript
 - PostgreSQL
 - OpenSearch
+- OpenSearch Dashboards
 - Docker
 - Git
 - Testing
 - Documentation
 - Data migration
+
+## Architecture overview
+- Backend: Flask application exposing API endpoints and business logic.
+- PostgreSQL: primary data store for durable research record persistence.
+- OpenSearch: search engine that will index documents from PostgreSQL for fast text search and analytics.
+- Dashboards: OpenSearch Dashboards provides a UI for exploring and visualizing indexed data.
+
+PostgreSQL remains the authoritative source of truth for application data, while OpenSearch is designed to index and query that data quickly for search and discovery.
 
 ## Project goals
 - Provide a clean, extensible architecture for research record management.
