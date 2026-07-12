@@ -8,11 +8,13 @@ from __future__ import annotations
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import SQLAlchemyError
 
-from .validators import validate_create_payload, ValidationError
+from .validators import validate_create_payload, validate_update_payload, ValidationError
 from .services import (
     create_research_record,
     list_research_records,
     get_research_record,
+    update_research_record,
+    delete_research_record,
     NotFoundError,
     DuplicateDOIError,
 )
@@ -74,3 +76,43 @@ def get_record(record_id):
         return _error_response("not_found", "Record not found.", None, 404)
     except SQLAlchemyError:
         return _error_response("server_error", "Database error." , None, 500)
+
+
+@records_bp.route("/<uuid:record_id>", methods=["PUT"])
+def update_record(record_id):
+    """Update an existing research record."""
+    try:
+        payload = request.get_json(force=True)
+    except Exception:
+        return _error_response("validation_error", "Validation failed.", {"_payload": "Invalid JSON"}, 400)
+
+    try:
+        data = validate_update_payload(payload)
+    except ValidationError as exc:
+        return _error_response("validation_error", "Validation failed.", exc.details, 400)
+
+    try:
+        record = update_research_record(record_id, data)
+        return jsonify(record.to_dict()), 200
+    except NotFoundError:
+        return _error_response("not_found", "Record not found.", None, 404)
+    except DuplicateDOIError as exc:
+        return _error_response("conflict", "Duplicate DOI.", {"doi": str(exc)}, 409)
+    except SQLAlchemyError:
+        return _error_response("server_error", "Database error." , None, 500)
+    except Exception:
+        return _error_response("server_error", "Unexpected error." , None, 500)
+
+
+@records_bp.route("/<uuid:record_id>", methods=["DELETE"])
+def delete_record(record_id):
+    """Delete a research record by UUID."""
+    try:
+        delete_research_record(record_id)
+        return "", 204
+    except NotFoundError:
+        return _error_response("not_found", "Record not found.", None, 404)
+    except SQLAlchemyError:
+        return _error_response("server_error", "Database error." , None, 500)
+    except Exception:
+        return _error_response("server_error", "Unexpected error." , None, 500)

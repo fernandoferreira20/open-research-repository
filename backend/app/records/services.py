@@ -72,3 +72,40 @@ def get_research_record(record_id: uuid.UUID) -> ResearchRecord:
     if record is None:
         raise NotFoundError("ResearchRecord not found")
     return record
+
+
+def update_research_record(record_id: uuid.UUID, data: dict) -> ResearchRecord:
+    """Update fields on an existing ResearchRecord.
+
+    Only supplied editable fields are changed. Immutable fields such as
+    `id`, `created_at`, and `updated_at` are not modified directly.
+    """
+    record = get_research_record(record_id)
+
+    for field, value in data.items():
+        setattr(record, field, value)
+
+    try:
+        db.session.commit()
+        db.session.refresh(record)
+        return record
+    except IntegrityError as exc:
+        db.session.rollback()
+        if "unique" in str(exc).lower() or "duplicate" in str(exc).lower():
+            raise DuplicateDOIError("A record with this DOI already exists")
+        raise
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def delete_research_record(record_id: uuid.UUID) -> None:
+    """Delete a ResearchRecord by UUID."""
+    record = get_research_record(record_id)
+
+    try:
+        db.session.delete(record)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise

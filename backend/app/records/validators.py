@@ -122,3 +122,107 @@ def validate_create_payload(payload: Any) -> Dict[str, Any]:
         raise ValidationError(errors)
 
     return cleaned
+
+
+def validate_update_payload(payload: Any) -> Dict[str, Any]:
+    """Validate and normalize payload for updating a ResearchRecord.
+
+    Partial updates are allowed, but only known editable fields may appear.
+    This validator rejects unknown fields, protects immutable fields,
+    and validates only fields that are present.
+    """
+    if not isinstance(payload, dict):
+        raise ValidationError({"_payload": "JSON body must be an object"})
+
+    if not payload:
+        raise ValidationError({"_payload": "Request body must contain at least one field"})
+
+    errors: Dict[str, str] = {}
+    cleaned: Dict[str, Any] = {}
+    known_fields = {
+        "title",
+        "description",
+        "record_type",
+        "status",
+        "license",
+        "doi",
+        "publication_date",
+    }
+
+    for key in payload:
+        if key not in known_fields:
+            errors[key] = "Unknown field"
+
+    # Validate only provided fields.
+    if "title" in payload:
+        title = payload["title"]
+        if not _is_non_empty_string(title):
+            errors["title"] = "Title must be a non-empty string"
+        else:
+            title = title.strip()
+            if len(title) > 255:
+                errors["title"] = "Title must be at most 255 characters"
+            else:
+                cleaned["title"] = title
+
+    if "description" in payload:
+        description = payload["description"]
+        if not _is_non_empty_string(description):
+            errors["description"] = "Description must be a non-empty string"
+        else:
+            cleaned["description"] = description.strip()
+
+    if "record_type" in payload:
+        record_type = payload["record_type"]
+        if not _is_non_empty_string(record_type):
+            errors["record_type"] = "record_type must be a non-empty string"
+        else:
+            record_type = record_type.strip()
+            if record_type not in ALLOWED_RECORD_TYPES:
+                errors["record_type"] = f"record_type must be one of: {', '.join(sorted(ALLOWED_RECORD_TYPES))}"
+            else:
+                cleaned["record_type"] = record_type
+
+    if "status" in payload:
+        status = payload["status"]
+        if not isinstance(status, str):
+            errors["status"] = "status must be a string"
+        else:
+            status = status.strip()
+            if status not in ALLOWED_STATUS:
+                errors["status"] = f"status must be one of: {', '.join(sorted(ALLOWED_STATUS))}"
+            else:
+                cleaned["status"] = status
+
+    if "license" in payload:
+        license_val = payload["license"]
+        if license_val is not None and not isinstance(license_val, str):
+            errors["license"] = "license must be a string"
+        else:
+            cleaned["license"] = license_val.strip() if license_val is not None else None
+            if cleaned["license"] is not None and len(cleaned["license"]) > 100:
+                errors["license"] = "license must be at most 100 characters"
+
+    if "doi" in payload:
+        doi = payload["doi"]
+        if doi is not None and not isinstance(doi, str):
+            errors["doi"] = "doi must be a string"
+        else:
+            cleaned["doi"] = doi.strip() if doi is not None else None
+            if cleaned["doi"] is not None and len(cleaned["doi"]) > 255:
+                errors["doi"] = "doi must be at most 255 characters"
+
+    if "publication_date" in payload:
+        pub_date = payload["publication_date"]
+        if pub_date is not None and not isinstance(pub_date, str):
+            errors["publication_date"] = "publication_date must be an ISO date string YYYY-MM-DD"
+        else:
+            try:
+                cleaned["publication_date"] = datetime.strptime(pub_date.strip(), "%Y-%m-%d").date() if pub_date is not None else None
+            except ValueError:
+                errors["publication_date"] = "publication_date must be in format YYYY-MM-DD"
+
+    if errors:
+        raise ValidationError(errors)
+
+    return cleaned
