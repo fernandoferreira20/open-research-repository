@@ -57,13 +57,65 @@ def create_research_record(data: dict) -> ResearchRecord:
         raise
 
 
-def list_research_records() -> List[ResearchRecord]:
-    """Return all ResearchRecord objects ordered by newest first."""
-    return (
-        db.session.query(ResearchRecord)
-        .order_by(ResearchRecord.created_at.desc())
+def list_research_records(options: dict | None = None) -> dict:
+    """Return paginated ResearchRecord objects using the supplied query options.
+
+    The query is built incrementally to apply filters, search, sorting, and
+    pagination in the database, which avoids loading all records into memory.
+    """
+    options = options or {}
+    page = options.get("page", 1)
+    per_page = options.get("per_page", 10)
+    status = options.get("status")
+    record_type = options.get("record_type")
+    q = options.get("q")
+    sort = options.get("sort", "created_at")
+    order = options.get("order", "desc")
+
+    query = db.session.query(ResearchRecord)
+
+    if status is not None:
+        query = query.filter(ResearchRecord.status == status)
+
+    if record_type is not None:
+        query = query.filter(ResearchRecord.record_type == record_type)
+
+    if q is not None and q != "":
+        search_term = f"%{q}%"
+        query = query.filter(
+            ResearchRecord.title.ilike(search_term)
+            | ResearchRecord.description.ilike(search_term)
+            | ResearchRecord.doi.ilike(search_term)
+        )
+
+    sort_columns = {
+        "created_at": ResearchRecord.created_at,
+        "updated_at": ResearchRecord.updated_at,
+        "publication_date": ResearchRecord.publication_date,
+        "title": ResearchRecord.title,
+    }
+
+    sort_column = sort_columns.get(sort, ResearchRecord.created_at)
+    direction = sort_column.asc() if order == "asc" else sort_column.desc()
+    query = query.order_by(direction)
+
+    total_items = query.count()
+    total_pages = (total_items + per_page - 1) // per_page if per_page else 1
+    items = (
+        query.limit(per_page)
+        .offset((page - 1) * per_page)
         .all()
     )
+
+    return {
+        "items": items,
+        "page": page,
+        "per_page": per_page,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
 
 
 def get_research_record(record_id: uuid.UUID) -> ResearchRecord:

@@ -22,6 +22,8 @@ class ValidationError(Exception):
 
 ALLOWED_RECORD_TYPES = {"paper", "dataset", "software", "presentation", "other"}
 ALLOWED_STATUS = {"draft", "published", "archived"}
+ALLOWED_SORT_FIELDS = {"created_at", "updated_at", "publication_date", "title"}
+ALLOWED_ORDER = {"asc", "desc"}
 
 
 def _is_non_empty_string(value: Any) -> bool:
@@ -221,6 +223,81 @@ def validate_update_payload(payload: Any) -> Dict[str, Any]:
                 cleaned["publication_date"] = datetime.strptime(pub_date.strip(), "%Y-%m-%d").date() if pub_date is not None else None
             except ValueError:
                 errors["publication_date"] = "publication_date must be in format YYYY-MM-DD"
+
+    if errors:
+        raise ValidationError(errors)
+
+    return cleaned
+
+
+def validate_record_query_params(args: Any) -> Dict[str, Any]:
+    """Validate query parameters for the records list endpoint."""
+    if not hasattr(args, "keys"):
+        raise ValidationError({"_query": "Query parameters must be a mapping"})
+
+    errors: Dict[str, str] = {}
+    cleaned: Dict[str, Any] = {}
+    known_keys = {"page", "per_page", "status", "record_type", "q", "sort", "order"}
+
+    for key in args.keys():
+        if key not in known_keys:
+            errors[key] = "Unknown query parameter"
+
+    page = args.get("page", "1")
+    per_page = args.get("per_page", "10")
+    status = args.get("status")
+    record_type = args.get("record_type")
+    q = args.get("q")
+    sort = args.get("sort", "created_at")
+    order = args.get("order", "desc")
+
+    try:
+        page_value = int(page)
+        if page_value < 1:
+            raise ValueError()
+        cleaned["page"] = page_value
+    except (TypeError, ValueError):
+        errors["page"] = "page must be a positive integer"
+
+    try:
+        per_page_value = int(per_page)
+        if per_page_value < 1 or per_page_value > 100:
+            raise ValueError()
+        cleaned["per_page"] = per_page_value
+    except (TypeError, ValueError):
+        errors["per_page"] = "per_page must be a positive integer up to 100"
+
+    if status is not None:
+        if status not in ALLOWED_STATUS:
+            errors["status"] = f"status must be one of: {', '.join(sorted(ALLOWED_STATUS))}"
+        else:
+            cleaned["status"] = status
+
+    if record_type is not None:
+        if record_type not in ALLOWED_RECORD_TYPES:
+            errors["record_type"] = f"record_type must be one of: {', '.join(sorted(ALLOWED_RECORD_TYPES))}"
+        else:
+            cleaned["record_type"] = record_type
+
+    if q is not None:
+        if not isinstance(q, str):
+            errors["q"] = "q must be a string"
+        else:
+            trimmed = q.strip()
+            if len(trimmed) > 200:
+                errors["q"] = "q must be at most 200 characters"
+            else:
+                cleaned["q"] = trimmed
+
+    if sort not in ALLOWED_SORT_FIELDS:
+        errors["sort"] = f"sort must be one of: {', '.join(sorted(ALLOWED_SORT_FIELDS))}"
+    else:
+        cleaned["sort"] = sort
+
+    if order not in ALLOWED_ORDER:
+        errors["order"] = "order must be one of: asc, desc"
+    else:
+        cleaned["order"] = order
 
     if errors:
         raise ValidationError(errors)

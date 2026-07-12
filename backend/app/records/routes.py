@@ -8,7 +8,7 @@ from __future__ import annotations
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import SQLAlchemyError
 
-from .validators import validate_create_payload, validate_update_payload, ValidationError
+from .validators import validate_create_payload, validate_record_query_params, validate_update_payload, ValidationError
 from .services import (
     create_research_record,
     list_research_records,
@@ -58,10 +58,27 @@ def create_record():
 
 @records_bp.route("", methods=["GET"])
 def list_records():
-    """List all research records ordered by `created_at` desc."""
+    """List research records with optional pagination, filtering, and sorting."""
     try:
-        records = list_research_records()
-        return jsonify([r.to_dict() for r in records]), 200
+        options = validate_record_query_params(request.args)
+    except ValidationError as exc:
+        return _error_response("validation_error", "Validation failed.", exc.details, 400)
+
+    try:
+        paginated = list_research_records(options)
+        return jsonify(
+            {
+                "items": [r.to_dict() for r in paginated["items"]],
+                "pagination": {
+                    "page": paginated["page"],
+                    "per_page": paginated["per_page"],
+                    "total_items": paginated["total_items"],
+                    "total_pages": paginated["total_pages"],
+                    "has_next": paginated["has_next"],
+                    "has_previous": paginated["has_previous"],
+                },
+            }
+        ), 200
     except SQLAlchemyError:
         return _error_response("server_error", "Database error." , None, 500)
 
