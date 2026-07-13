@@ -18,6 +18,9 @@ class Config:
     # Flask environment mode: development, production, or testing.
     FLASK_ENV = os.getenv("FLASK_ENV", "production")
 
+    # OpenSearch connection URL used by the centralized client.
+    OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
+
 
 class TestConfig(Config):
     """Configuration used only for automated tests."""

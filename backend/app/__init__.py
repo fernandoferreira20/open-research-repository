@@ -33,6 +33,12 @@ def create_app(config_object: type[Config] = Config):
         from .records.routes import records_bp  # noqa: F401
         app.register_blueprint(records_bp)
 
+    # Initialize the OpenSearch client and register search routes.
+    from .search import init_opensearch, search_bp  # noqa: E402
+
+    init_opensearch(app)
+    app.register_blueprint(search_bp)
+
     # Register route blueprints here. Blueprints keep route
     # organization modular and make it easy to add new APIs later.
     app.register_blueprint(api_bp)
