@@ -9,10 +9,16 @@ from __future__ import annotations
 from typing import List
 import uuid
 
+from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models import ResearchRecord
+from app.search.services import (
+    delete_research_record_document,
+    index_research_record,
+    update_research_record_document,
+)
 
 
 class NotFoundError(Exception):
@@ -44,6 +50,13 @@ def create_research_record(data: dict) -> ResearchRecord:
         db.session.commit()
         # Refresh to get any DB-side defaults
         db.session.refresh(record)
+        try:
+            index_research_record(record)
+        except Exception:
+            current_app.logger.exception(
+                "OpenSearch indexing failed during create for record id=%s",
+                record.id,
+            )
         return record
     except IntegrityError as exc:
         db.session.rollback()
@@ -140,6 +153,13 @@ def update_research_record(record_id: uuid.UUID, data: dict) -> ResearchRecord:
     try:
         db.session.commit()
         db.session.refresh(record)
+        try:
+            update_research_record_document(record)
+        except Exception:
+            current_app.logger.exception(
+                "OpenSearch indexing failed during update for record id=%s",
+                record.id,
+            )
         return record
     except IntegrityError as exc:
         db.session.rollback()
@@ -154,10 +174,18 @@ def update_research_record(record_id: uuid.UUID, data: dict) -> ResearchRecord:
 def delete_research_record(record_id: uuid.UUID) -> None:
     """Delete a ResearchRecord by UUID."""
     record = get_research_record(record_id)
+    record_id_value = record.id
 
     try:
         db.session.delete(record)
         db.session.commit()
+        try:
+            delete_research_record_document(record_id_value)
+        except Exception:
+            current_app.logger.exception(
+                "OpenSearch deletion failed for record id=%s",
+                record_id_value,
+            )
     except Exception:
         db.session.rollback()
         raise

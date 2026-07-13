@@ -1,6 +1,9 @@
 """Tests for research record endpoints."""
 
 from datetime import date
+from unittest.mock import Mock
+
+import pytest
 
 
 def make_record_payload(**overrides):
@@ -32,6 +35,35 @@ def test_create_valid_record(client):
     assert data["title"] == payload["title"]
     assert data["status"] == "draft"
     assert data["publication_date"] == payload["publication_date"]
+
+
+def test_create_indexing_is_called_after_successful_commit(monkeypatch, client):
+    index_mock = Mock()
+    monkeypatch.setattr("app.records.services.index_research_record", index_mock)
+
+    payload = make_record_payload(status=None)
+    payload.pop("status")
+
+    response = client.post("/api/records", json=payload)
+
+    assert response.status_code == 201
+    assert index_mock.call_count == 1
+    created_id = response.get_json()["id"]
+    assert client.get(f"/api/records/{created_id}").status_code == 200
+
+
+def test_create_indexing_failure_does_not_rollback_db(monkeypatch, client):
+    index_mock = Mock(side_effect=RuntimeError("index failure"))
+    monkeypatch.setattr("app.records.services.index_research_record", index_mock)
+
+    payload = make_record_payload(status=None)
+    payload.pop("status")
+
+    response = client.post("/api/records", json=payload)
+
+    assert response.status_code == 201
+    created_id = response.get_json()["id"]
+    assert client.get(f"/api/records/{created_id}").status_code == 200
 
 
 def test_validation_errors_for_required_fields(client):
@@ -324,6 +356,36 @@ def test_update_record_success(client):
     assert updated["updated_at"] != original_updated_at
 
 
+def test_update_indexing_is_called_after_successful_commit(monkeypatch, client):
+    payload = make_record_payload(title="Indexed Update", doi="10.1234/indexedupdate")
+    record_id = client.post("/api/records", json=payload).get_json()["id"]
+
+    update_mock = Mock()
+    monkeypatch.setattr("app.records.services.update_research_record_document", update_mock)
+
+    response = client.put(f"/api/records/{record_id}", json={"title": "New Title"})
+
+    assert response.status_code == 200
+    assert update_mock.call_count == 1
+    updated = response.get_json()
+    assert updated["title"] == "New Title"
+
+
+def test_update_indexing_failure_does_not_break_db(monkeypatch, client):
+    payload = make_record_payload(title="Update Fail", doi="10.1234/updatefail")
+    record_id = client.post("/api/records", json=payload).get_json()["id"]
+
+    update_mock = Mock(side_effect=RuntimeError("index failure"))
+    monkeypatch.setattr("app.records.services.update_research_record_document", update_mock)
+
+    response = client.put(f"/api/records/{record_id}", json={"status": "published"})
+
+    assert response.status_code == 200
+    assert update_mock.call_count == 1
+    fetched = client.get(f"/api/records/{record_id}").get_json()
+    assert fetched["status"] == "published"
+
+
 def test_partial_update_record(client):
     """Partial update should change only provided fields."""
     payload = make_record_payload(title="Partial Title", doi="10.1234/partial")
@@ -414,6 +476,36 @@ def test_delete_record_success(client):
 
     delete_response = client.delete(f"/api/records/{record_id}")
     assert delete_response.status_code == 204
+
+    get_response = client.get(f"/api/records/{record_id}")
+    assert get_response.status_code == 404
+
+
+def test_delete_indexing_is_called_after_successful_commit(monkeypatch, client):
+    payload = make_record_payload(title="Delete Indexed", doi="10.1234/deleteindex")
+    record_id = client.post("/api/records", json=payload).get_json()["id"]
+
+    delete_mock = Mock()
+    monkeypatch.setattr("app.records.services.delete_research_record_document", delete_mock)
+
+    delete_response = client.delete(f"/api/records/{record_id}")
+    assert delete_response.status_code == 204
+    assert delete_mock.call_count == 1
+
+    get_response = client.get(f"/api/records/{record_id}")
+    assert get_response.status_code == 404
+
+
+def test_delete_indexing_failure_does_not_break_db(monkeypatch, client):
+    payload = make_record_payload(title="Delete Fail", doi="10.1234/deletefail")
+    record_id = client.post("/api/records", json=payload).get_json()["id"]
+
+    delete_mock = Mock(side_effect=RuntimeError("index failure"))
+    monkeypatch.setattr("app.records.services.delete_research_record_document", delete_mock)
+
+    delete_response = client.delete(f"/api/records/{record_id}")
+    assert delete_response.status_code == 204
+    assert delete_mock.call_count == 1
 
     get_response = client.get(f"/api/records/{record_id}")
     assert get_response.status_code == 404
