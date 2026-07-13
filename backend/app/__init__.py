@@ -31,7 +31,9 @@ def create_app(config_object: type[Config] = Config):
         # available when the application starts. Importing inside the
         # application context helps avoid circular import issues.
         from .records.routes import records_bp  # noqa: F401
+        from .files.routes import files_bp  # noqa: F401
         app.register_blueprint(records_bp)
+        app.register_blueprint(files_bp)
 
     # Initialize the OpenSearch client and register search routes.
     from .search import init_opensearch, search_bp  # noqa: E402

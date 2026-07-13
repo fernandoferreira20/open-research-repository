@@ -14,6 +14,8 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models import ResearchRecord
+from app.files.services import remove_file_from_disk
+from app.search.client import get_opensearch_client
 from app.search.services import (
     delete_research_record_document,
     index_research_record,
@@ -51,7 +53,7 @@ def create_research_record(data: dict) -> ResearchRecord:
         # Refresh to get any DB-side defaults
         db.session.refresh(record)
         try:
-            index_research_record(record)
+            index_research_record(get_opensearch_client(), record, config=current_app.config)
         except Exception:
             current_app.logger.exception(
                 "OpenSearch indexing failed during create for record id=%s",
@@ -154,7 +156,7 @@ def update_research_record(record_id: uuid.UUID, data: dict) -> ResearchRecord:
         db.session.commit()
         db.session.refresh(record)
         try:
-            update_research_record_document(record)
+            update_research_record_document(get_opensearch_client(), record, config=current_app.config)
         except Exception:
             current_app.logger.exception(
                 "OpenSearch indexing failed during update for record id=%s",
@@ -175,12 +177,21 @@ def delete_research_record(record_id: uuid.UUID) -> None:
     """Delete a ResearchRecord by UUID."""
     record = get_research_record(record_id)
     record_id_value = record.id
+    stored_file_path = record.file.file_path if record.file is not None else None
 
     try:
         db.session.delete(record)
         db.session.commit()
+        if stored_file_path is not None:
+            try:
+                remove_file_from_disk(stored_file_path)
+            except Exception:
+                current_app.logger.exception(
+                    "Stored file cleanup failed after record deletion for record id=%s",
+                    record_id_value,
+                )
         try:
-            delete_research_record_document(record_id_value)
+            delete_research_record_document(get_opensearch_client(), record_id_value, config=current_app.config)
         except Exception:
             current_app.logger.exception(
                 "OpenSearch deletion failed for record id=%s",

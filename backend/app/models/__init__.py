@@ -10,6 +10,7 @@ This module simply imports model classes to make them visible.
 
 # Import model classes so Flask-Migrate can discover them when the app
 # package is imported during `create_app()` execution.
+from .research_file import ResearchFile
 from .research_record import ResearchRecord
 
-__all__ = ["ResearchRecord"]
+__all__ = ["ResearchRecord", "ResearchFile"]

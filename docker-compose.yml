@@ -12,6 +12,7 @@ services:
       - database
     volumes:
       - ./backend:/app
+      - ./data/uploads:/app/uploads
     networks:
       - research_network
 

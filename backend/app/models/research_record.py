@@ -15,7 +15,7 @@ from typing import Optional
 
 from sqlalchemy import String, Text, Date, DateTime
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
 
@@ -74,6 +74,13 @@ class ResearchRecord(db.Model):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    file: Mapped[Optional["ResearchFile"]] = relationship(
+        back_populates="record",
+        uselist=False,
+        cascade="all, delete-orphan",
+        single_parent=True,
     )
 
     def to_dict(self) -> dict:
