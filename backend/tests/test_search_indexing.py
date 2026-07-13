@@ -224,7 +224,7 @@ def test_delete_research_record_document_returns_false_when_missing():
     assert client.calls == [("delete", "custom_records", "12345", "wait_for")]
 
 
-def test_rebuild_records_index_deletes_and_recreates_index():
+def test_rebuild_records_index_deletes_and_recreates_index(monkeypatch):
     client = DummyClient()
     client.indices = type(
         "Indices",
@@ -236,13 +236,15 @@ def test_rebuild_records_index_deletes_and_recreates_index():
         },
     )()
 
-    results = rebuild_records_index(client, [], config={"OPENSEARCH_RECORDS_INDEX": "custom_records"})
+    monkeypatch.setattr("app.search.services.get_opensearch_client", lambda: client)
+
+    results = rebuild_records_index([],)
 
     assert results == {"indexed": 0, "failed": 0}
-    assert client.calls == [("delete_index", "custom_records"), ("create", "custom_records", INDEX_BODY)]
+    assert client.calls == [("delete_index", "research_records"), ("create", "research_records", INDEX_BODY)]
 
 
-def test_rebuild_records_index_indexes_all_successful_records():
+def test_rebuild_records_index_indexes_all_successful_records(monkeypatch):
     client = DummyClient()
     client.indices = type(
         "Indices",
@@ -259,15 +261,17 @@ def test_rebuild_records_index_indexes_all_successful_records():
     record2.id = "67890"
     record2.title = "Other Title"
 
-    results = rebuild_records_index(client, [record1, record2], config={"OPENSEARCH_RECORDS_INDEX": "custom_records"})
+    monkeypatch.setattr("app.search.services.get_opensearch_client", lambda: client)
+
+    results = rebuild_records_index([record1, record2])
 
     assert results == {"indexed": 2, "failed": 0}
-    assert client.calls[0] == ("create", "custom_records", INDEX_BODY)
+    assert client.calls[0] == ("create", "research_records", INDEX_BODY)
     assert client.calls[1][0] == "index"
     assert client.calls[2][0] == "index"
 
 
-def test_rebuild_records_index_counts_failures_and_continues():
+def test_rebuild_records_index_counts_failures_and_continues(monkeypatch):
     class FailingIndexClient(DummyClient):
         def index(self, *, index, id, body, refresh):
             super().index(index=index, id=id, body=body, refresh=refresh)
@@ -290,10 +294,12 @@ def test_rebuild_records_index_counts_failures_and_continues():
     bad_record = DummyRecord()
     bad_record.id = "bad-id"
 
-    results = rebuild_records_index(client, [good_record, bad_record], config={"OPENSEARCH_RECORDS_INDEX": "custom_records"})
+    monkeypatch.setattr("app.search.services.get_opensearch_client", lambda: client)
+
+    results = rebuild_records_index([good_record, bad_record])
 
     assert results == {"indexed": 1, "failed": 1}
-    assert client.calls[0] == ("create", "custom_records", INDEX_BODY)
+    assert client.calls[0] == ("create", "research_records", INDEX_BODY)
     assert client.calls[1][0] == "index"
     assert client.calls[2][0] == "index"
 
