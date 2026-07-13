@@ -7,5 +7,27 @@ search support can grow without affecting core models or routes.
 
 from .client import get_opensearch_client, init_opensearch
 from .routes import search_bp
+from .services import (
+    create_records_index,
+    delete_records_index,
+    delete_research_record_document,
+    ensure_records_index,
+    index_exists,
+    index_research_record,
+    rebuild_records_index,
+    update_research_record_document,
+)
 
-__all__ = ["get_opensearch_client", "init_opensearch", "search_bp"]
+__all__ = [
+    "get_opensearch_client",
+    "init_opensearch",
+    "search_bp",
+    "create_records_index",
+    "delete_records_index",
+    "delete_research_record_document",
+    "ensure_records_index",
+    "index_exists",
+    "index_research_record",
+    "rebuild_records_index",
+    "update_research_record_document",
+]

@@ -21,6 +21,9 @@ class Config:
     # OpenSearch connection URL used by the centralized client.
     OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
 
+    # OpenSearch index name for ResearchRecord documents.
+    OPENSEARCH_RECORDS_INDEX = os.getenv("OPENSEARCH_RECORDS_INDEX", "research_records")
+
 
 class TestConfig(Config):
     """Configuration used only for automated tests."""
