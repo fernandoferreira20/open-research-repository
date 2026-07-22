@@ -1,15 +1,15 @@
-"""Pending Alembic migration for research_files.
+"""Add research files table
 
-The intended destination is:
-backend/migrations/versions/8a44d8c1d3b2_add_research_files_table.py
+Revision ID: 8a44d8c1d3b2
+Revises: d1f07fba9b6b
+Create Date: 2026-07-13 00:00:00.000000
 
-That directory is currently not writable in this environment, so this file
-preserves the migration content until permissions are fixed.
 """
 from alembic import op
 import sqlalchemy as sa
 
 
+# revision identifiers, used by Alembic.
 revision = "8a44d8c1d3b2"
 down_revision = "d1f07fba9b6b"
 branch_labels = None
@@ -29,7 +29,6 @@ def upgrade():
         sa.Column("uploaded_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["record_id"], ["research_records.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("record_id"),
         sa.UniqueConstraint("stored_filename"),
     )
     with op.batch_alter_table("research_files", schema=None) as batch_op:
